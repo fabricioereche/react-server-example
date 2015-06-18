@@ -1,41 +1,41 @@
-var React = require('react'),
-    DOM = React.DOM, div = DOM.div, button = DOM.button, ul = DOM.ul, li = DOM.li
-
-// This is just a simple example of a component that can be rendered on both
-// the server and browser
+var React  = require('react');
+var DOM    = React.DOM;
+var button = DOM.button;
+var div    = DOM.div;
+var ul     = DOM.ul;
+var li     = DOM.li;
 
 module.exports = React.createClass({
 
-  // We initialise its state by using the `props` that were passed in when it
-  // was first rendered. We also want the button to be disabled until the
-  // component has fully mounted on the DOM
+  // Inicialmente ele busca as propriedades já renderizadas pelo server
+  // e deixamos o botão desabilitado inicialmente para que seja habilitado
+  // apenas quando todo o componente estiver carregado
   getInitialState: function() {
     return {items: this.props.items, disabled: true}
   },
 
-  // Once the component has been mounted, we can enable the button
+  // Quando todo o componente estiver carregado, habilita o botão
   componentDidMount: function() {
     this.setState({disabled: false})
   },
 
-  // Then we just update the state whenever its clicked by adding a new item to
-  // the list - but you could imagine this being updated with the results of
-  // AJAX calls, etc
+  // Este handler apenas adiciona um novo item na lista atual
+  // isso pode ser alterado para chamadas AJAX em um servidor, para atualização
+  // inclusão ou enfim, muita coisa pode ser feita nessa brincadeira
   handleClick: function() {
     this.setState({
       items: this.state.items.concat('Item ' + this.state.items.length)
     })
   },
 
-  // For ease of illustration, we just use the React JS methods directly
-  // (no JSX compilation needed)
-  // Note that we allow the button to be disabled initially, and then enable it
-  // when everything has loaded
+  // A ideia desse exemplo é ser o mais simples possível
+  // logo, foi optado a remoção da compilação de um código JSX, deixando JS puro
+  // Note que o botão fica desabilitado, até que tudo esteja completamente carregado
   render: function() {
 
     return div(null,
 
-      button({onClick: this.handleClick, disabled: this.state.disabled}, 'Add Item'),
+      button({onClick: this.handleClick, disabled: this.state.disabled}, 'Adiciona Item'),
 
       ul({children: this.state.items.map(function(item) {
         return li(null, item)

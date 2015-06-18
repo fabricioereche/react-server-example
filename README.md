@@ -1,69 +1,65 @@
 react-server-example
 --------------------
 
-A simple (no compile) example of how to do server-side rendering with the
-[React](http://facebook.github.io/react/) library so that component code can be
-shared between server and browser, as well as getting fast initial page loads
-and search-engine-friendly pages.
+Exemplo simples (sem compilação) de como renderizar pelo servidor utilizando 
+[React](http://facebook.github.io/react/) para que os componentes possam ser 
+compartilhados entre o navegador e o servidor tornando a inicialização da página
+muito mais rápida (rés a lenda que esta tática é amigável a SEO, mas não é muito nesse caso)
 
-A more complex example with shared routing and data fetching can be found at
-[react-server-routing-example](https://github.com/mhart/react-server-routing-example).
-
-Example
+Utilização do exemplo
 -------
 
 ```sh
+$ npm install
 $ node server.js
 ```
 
-Then navigate to [http://localhost:3000](http://localhost:3000) and
-click on the button to see some reactive events in action.
+Após concluir a instalação das dependências
+Navegue até [http://localhost:3000](http://localhost:3000)
+e clique algumas vezes no botão para verificar a ação atribuida
 
-Try viewing the page source to ensure the HTML being sent from the server is already rendered
-(with checksums to determine whether client-side rendering is necessary)
-
-Here are the files involved:
+Veja os arquivos envolvidos abaixo:
 
 `App.js`:
 ```js
-var React = require('react'),
-    DOM = React.DOM, div = DOM.div, button = DOM.button, ul = DOM.ul, li = DOM.li
-
-// This is just a simple example of a component that can be rendered on both
-// the server and browser
+var button = DOM.button; 
+var React  = require('react');
+var DOM    = React.DOM; 
+var div    = DOM.div; 
+var ul     = DOM.ul; 
+var li     = DOM.li;
 
 module.exports = React.createClass({
 
-  // We initialise its state by using the `props` that were passed in when it
-  // was first rendered. We also want the button to be disabled until the
-  // component has fully mounted on the DOM
+  // Inicialmente ele busca as propriedades já renderizadas pelo server
+  // e deixamos o botão desabilitado inicialmente para que seja habilitado
+  // apenas quando todo o componente estiver carregado
   getInitialState: function() {
     return {items: this.props.items, disabled: true}
   },
 
-  // Once the component has been mounted, we can enable the button
+  // Quando todo o componente estiver carregado, habilita o botão
   componentDidMount: function() {
     this.setState({disabled: false})
   },
 
-  // Then we just update the state whenever its clicked by adding a new item to
-  // the list - but you could imagine this being updated with the results of
-  // AJAX calls, etc
+  // Este handler apenas adiciona um novo item na lista atual
+  // isso pode ser alterado para chamadas AJAX em um servidor, para atualização
+  // inclusão ou enfim, muita coisa pode ser feita nessa brincadeira
   handleClick: function() {
     this.setState({
       items: this.state.items.concat('Item ' + this.state.items.length)
     })
   },
 
-  // For ease of illustration, we just use the React JS methods directly
-  // (no JSX compilation needed)
-  // Note that we allow the button to be disabled initially, and then enable it
-  // when everything has loaded
+  // A ideia desse exemplo é ser o mais simples possível
+  // logo, foi optado a remoção da compilação de um código JSX, deixando JS puro
+  // Note que o botão fica desabilitado, até que tudo esteja completamente carregado
   render: function() {
 
     return div(null,
 
-      button({onClick: this.handleClick, disabled: this.state.disabled}, 'Add Item'),
+      button({onClick: this.handleClick, disabled: this.state.disabled}, 'Adiciona Item'),
 
       ul({children: this.state.items.map(function(item) {
         return li(null, item)
@@ -72,51 +68,57 @@ module.exports = React.createClass({
     )
   },
 })
+
 ```
 
 `browser.js`:
 ```js
-var React = require('react'),
-    // This is our React component, shared by server and browser thanks to browserify
-    App = React.createFactory(require('./App'))
+var React = require('react');
+// Graças a utilização do browserify, o componente abaixo está compartilhado entre front e back end
+var App = React.createFactory(require('./App'));
 
-// This script will run in the browser and will render our component using the
-// value from APP_PROPS that we generate inline in the page's html on the server.
-// If these props match what is used in the server render, React will see that
-// it doesn't need to generate any DOM and the page will load faster
+// Este script irá rodar no browser e renderizar nosso componente utilizando
+// valores do APP_PROPS que fora declarado no lado do servidor no html principal.
+// Como as informações do APP_PROPS já estava declarada no lado do servidor   
+// o React não irá gerar novamente, deixando o DOM limpo e a inicialização mais rápida
 
-React.render(App(window.APP_PROPS), document.getElementById('content'))
+React.render(App(window.APP_PROPS), document.getElementById('content'));
+
 ```
 
 `server.js`:
 ```js
-var http = require('http'),
-    browserify = require('browserify'),
-    literalify = require('literalify'),
-    React = require('react'),
-    DOM = React.DOM, body = DOM.body, div = DOM.div, script = DOM.script,
-    // This is our React component, shared by server and browser thanks to browserify
-    App = React.createFactory(require('./App'))
+var browserify = require('browserify');
+var literalify = require('literalify');
+var React      = require('react');
+var http       = require('http');
+var DOM        = React.DOM;
+var body       = DOM.body;
+var div        = DOM.div;
+var script     = DOM.script;
+
+// Este componente, está compartilhado com o browser, graças a utilização do browserify
+var App = React.createFactory(require('./App'));
 
 
-// Just create a plain old HTTP server that responds to two endpoints ('/' and
-// '/bundle.js') This would obviously work similarly with any higher level
-// library (Express, etc)
+// Cria uma resposta http simples no servidor que responde aos endpoints ('/' e
+// '/bundle.js') Em um mundo real de produção, usariamos uma biblioteca/framework
+// como o Express ou outros
 http.createServer(function(req, res) {
 
-  // If we hit the homepage, then we want to serve up some HTML - including the
-  // server-side rendered React component(s), as well as the script tags
-  // pointing to the client-side code
+  // Quando acessarmos o endpoint principal, então vamos renderizar HTML
+  // utilizando o server-side para renderizar um componente React
+  // assim como os scripts a serem usados no lado do cliente
   if (req.url == '/') {
 
-    res.setHeader('Content-Type', 'text/html')
+    res.setHeader('Content-Type', 'text/html');
 
-    // `props` represents the data to be passed in to the React component for
-    // rendering - just as you would pass data, or expose variables in
-    // templates such as Jade or Handlebars.  We just use some dummy data
-    // here (with some potentially dangerous values for testing), but you could
-    // imagine this would be objects typically fetched async from a DB,
-    // filesystem or API, depending on the logged-in user, etc.
+    // `props` representa dados para o componente do React
+    // para renderização, assim como é passado dados para templates
+    // como Jade or Handlebars. Usamos informações fixas aqui
+    // (com potenciais quebra de segurança e de vulnereabilidade), mas
+    // na vida real, estariamos apresentando dados de um banco de dados
+    // de uma API ou de algum arquivo do servidor mesmo.
     var props = {
       items: [
         'Item 0',
@@ -124,73 +126,74 @@ http.createServer(function(req, res) {
         'Item </script>',
         'Item <!--inject!-->',
       ]
-    }
+    };
 
-    // Here we're using React to render the outer body, so we just use the
-    // simpler renderToStaticMarkup function, but you could use any templating
-    // language (or just a string) for the outer page template
+    // Aqui estamos usando metodos internos de renderização do React, utilizando
+    // a função renderToStaticMarkup, mas poderia ser usado alguma linguagem de
+    // template ou uma string mesmo para renderizar o html
     var html = React.renderToStaticMarkup(body(null,
 
-      // The actual server-side rendering of our component occurs here, and we
-      // pass our data in as `props`. This div is the same one that the client
-      // will "render" into on the browser from browser.js
+      // É aqui que a renderização do lado do servidor ocorre, dessa forma
+      // passamos as `props` para o html. Esta div é a mesma que será
+      // utilizada no browser pelo browser.js
       div({id: 'content', dangerouslySetInnerHTML: {__html:
         React.renderToString(App(props))
       }}),
 
-      // The props should match on the client and server, so we stringify them
-      // on the page to be available for access by the code run in browser.js
-      // You could use any var name here as long as it's unique
+      // As propriedades devem ser sincronizadas entre o browser e o servidor 
+      // então transformamos em string para que o código seja executado no browser.js
+      // Você pode utilizar qualquer nome de variável, desde que seja única
       script({dangerouslySetInnerHTML: {__html:
         'var APP_PROPS = ' + safeStringify(props) + ';'
       }}),
 
-      // We'll load React from a CDN - you don't have to do this,
-      // you can bundle it up or serve it locally if you like
+      // Aqui carregamos o React direto do CDN - não é necessário fazer isso,
+      // você pode deixa-lo fixo no lado do servidor direto no bundle
       script({src: '//fb.me/react-0.13.3.min.js'}),
 
-      // Then the browser will fetch and run the browserified bundle consisting
-      // of browser.js and all its dependencies.
-      // We serve this from the endpoint a few lines down.
+      // Por fim o browser vai buscar o bundle do browserify contido
+      // no browser.js juntamente com suas dependências.
+      // Isso é definido pelo nosso outro endpoint mais abaixo.
       script({src: '/bundle.js'})
-    ))
+    ));
 
-    // Return the page to the browser
-    res.end(html)
+    // Retorna o html para a página
+    res.end(html);
 
-  // This endpoint is hit when the browser is requesting bundle.js from the page above
+  // Este endpoint executa o bundle do browserify
   } else if (req.url == '/bundle.js') {
 
     res.setHeader('Content-Type', 'text/javascript')
 
-    // Here we invoke browserify to package up browser.js and everything it requires.
-    // DON'T do it on the fly like this in production - it's very costly -
-    // either compile the bundle ahead of time, or use some smarter middleware
-    // (eg browserify-middleware).
-    // We also use literalify to transform our `require` statements for React
-    // so that it uses the global variable (from the CDN JS file) instead of
-    // bundling it up with everything else
+    // Aqui utilizados browserify para empacotar para browser.js tudo que ele precisa.
+    // Não utilize isso em produção, é um processo lento e desnecessário  
+    // o correto é efetuar sua compilação antes ou utilizar algum middleware
+    // como o browserify-middleware.
+    // Utilizamos o literalify para a utilização global do React
+    // para que seja utilizado direto pelo CDN carregado anteriormente
+    // sem a necessidade de ser executado pelo bundle novamente
     browserify()
       .add('./browser.js')
       .transform(literalify.configure({react: 'window.React'}))
       .bundle()
-      .pipe(res)
+      .pipe(res);
 
-  // Return 404 for all other requests
+  // Retorna 404 para qualquer outro endpoint 
   } else {
-    res.statusCode = 404
-    res.end()
+    res.statusCode = 404;
+    res.end();
   }
 
-// The http server listens on port 3000
+// Escutando na porta 3000
 }).listen(3000, function(err) {
-  if (err) throw err
-  console.log('Listening on 3000...')
+  if (err) throw err;
+  console.log('Acesse http://localhost:3000 e veja a magia no ar');
 })
 
 
-// A utility function to safely escape JSON for embedding in a <script> tag
+// Uma função segura para fazer o parse JSON para utilizar tag <script>
 function safeStringify(obj) {
   return JSON.stringify(obj).replace(/<\/script/g, '<\\/script').replace(/<!--/g, '<\\!--')
 }
+
 ```

@@ -1,30 +1,34 @@
-var http = require('http'),
-    browserify = require('browserify'),
-    literalify = require('literalify'),
-    React = require('react'),
-    DOM = React.DOM, body = DOM.body, div = DOM.div, script = DOM.script,
-    // This is our React component, shared by server and browser thanks to browserify
-    App = React.createFactory(require('./App'))
+var browserify = require('browserify');
+var literalify = require('literalify');
+var React      = require('react');
+var http       = require('http');
+var DOM        = React.DOM;
+var body       = DOM.body;
+var div        = DOM.div;
+var script     = DOM.script;
+
+// Este componente, está compartilhado com o browser, graças a utilização do browserify
+var App = React.createFactory(require('./App'));
 
 
-// Just create a plain old HTTP server that responds to two endpoints ('/' and
-// '/bundle.js') This would obviously work similarly with any higher level
-// library (Express, etc)
+// Cria uma resposta http simples no servidor que responde aos endpoints ('/' e
+// '/bundle.js') Em um mundo real de produção, usariamos uma biblioteca/framework
+// como o Express ou outros
 http.createServer(function(req, res) {
 
-  // If we hit the homepage, then we want to serve up some HTML - including the
-  // server-side rendered React component(s), as well as the script tags
-  // pointing to the client-side code
+  // Quando acessarmos o endpoint principal, então vamos renderizar HTML
+  // utilizando o server-side para renderizar um componente React
+  // assim como os scripts a serem usados no lado do cliente
   if (req.url == '/') {
 
-    res.setHeader('Content-Type', 'text/html')
+    res.setHeader('Content-Type', 'text/html');
 
-    // `props` represents the data to be passed in to the React component for
-    // rendering - just as you would pass data, or expose variables in
-    // templates such as Jade or Handlebars.  We just use some dummy data
-    // here (with some potentially dangerous values for testing), but you could
-    // imagine this would be objects typically fetched async from a DB,
-    // filesystem or API, depending on the logged-in user, etc.
+    // `props` representa dados para o componente do React
+    // para renderização, assim como é passado dados para templates
+    // como Jade or Handlebars. Usamos informações fixas aqui
+    // (com potenciais quebra de segurança e de vulnereabilidade), mas
+    // na vida real, estariamos apresentando dados de um banco de dados
+    // de uma API ou de algum arquivo do servidor mesmo.
     var props = {
       items: [
         'Item 0',
@@ -32,72 +36,72 @@ http.createServer(function(req, res) {
         'Item </script>',
         'Item <!--inject!-->',
       ]
-    }
+    };
 
-    // Here we're using React to render the outer body, so we just use the
-    // simpler renderToStaticMarkup function, but you could use any templating
-    // language (or just a string) for the outer page template
+    // Aqui estamos usando metodos internos de renderização do React, utilizando
+    // a função renderToStaticMarkup, mas poderia ser usado alguma linguagem de
+    // template ou uma string mesmo para renderizar o html
     var html = React.renderToStaticMarkup(body(null,
 
-      // The actual server-side rendering of our component occurs here, and we
-      // pass our data in as `props`. This div is the same one that the client
-      // will "render" into on the browser from browser.js
+      // É aqui que a renderização do lado do servidor ocorre, dessa forma
+      // passamos as `props` para o html. Esta div é a mesma que será
+      // utilizada no browser pelo browser.js
       div({id: 'content', dangerouslySetInnerHTML: {__html:
         React.renderToString(App(props))
       }}),
 
-      // The props should match on the client and server, so we stringify them
-      // on the page to be available for access by the code run in browser.js
-      // You could use any var name here as long as it's unique
+      // As propriedades devem ser sincronizadas entre o browser e o servidor 
+      // então transformamos em string para que o código seja executado no browser.js
+      // Você pode utilizar qualquer nome de variável, desde que seja única
       script({dangerouslySetInnerHTML: {__html:
         'var APP_PROPS = ' + safeStringify(props) + ';'
       }}),
 
-      // We'll load React from a CDN - you don't have to do this,
-      // you can bundle it up or serve it locally if you like
+      // Aqui carregamos o React direto do CDN - não é necessário fazer isso,
+      // você pode deixa-lo fixo no lado do servidor direto no bundle
       script({src: '//fb.me/react-0.13.3.min.js'}),
 
-      // Then the browser will fetch and run the browserified bundle consisting
-      // of browser.js and all its dependencies.
-      // We serve this from the endpoint a few lines down.
+      // Por fim o browser vai buscar o bundle do browserify contido
+      // no browser.js juntamente com suas dependências.
+      // Isso é definido pelo nosso outro endpoint mais abaixo.
       script({src: '/bundle.js'})
-    ))
+    ));
 
-    // Return the page to the browser
-    res.end(html)
+    // Retorna o html para a página
+    res.end(html);
 
-  // This endpoint is hit when the browser is requesting bundle.js from the page above
+  // Este endpoint executa o bundle do browserify
   } else if (req.url == '/bundle.js') {
 
     res.setHeader('Content-Type', 'text/javascript')
 
-    // Here we invoke browserify to package up browser.js and everything it requires.
-    // DON'T do it on the fly like this in production - it's very costly -
-    // either compile the bundle ahead of time, or use some smarter middleware
-    // (eg browserify-middleware).
-    // We also use literalify to transform our `require` statements for React
-    // so that it uses the global variable (from the CDN JS file) instead of
-    // bundling it up with everything else
+    // Aqui utilizados browserify para empacotar para browser.js tudo que ele precisa.
+    // Não utilize isso em produção, é um processo lento e desnecessário  
+    // o correto é efetuar sua compilação antes ou utilizar algum middleware
+    // como o browserify-middleware.
+    // Utilizamos o literalify para a utilização global do React
+    // para que seja utilizado direto pelo CDN carregado anteriormente
+    // sem a necessidade de ser executado pelo bundle novamente
     browserify()
       .add('./browser.js')
       .transform(literalify.configure({react: 'window.React'}))
       .bundle()
-      .pipe(res)
+      .pipe(res);
 
-  // Return 404 for all other requests
+  // Retorna 404 para qualquer outro endpoint 
   } else {
-    res.statusCode = 404
-    res.end()
+    res.statusCode = 404;
+    res.end();
   }
 
-// The http server listens on port 3000
+// Escutando na porta 3000
 }).listen(3000, function(err) {
-  if (err) throw err
-  console.log('Listening on 3000...')
+  if (err) throw err;
+  console.log('Acesse http://localhost:3000 e veja a magia no ar');
 })
 
 
-// A utility function to safely escape JSON for embedding in a <script> tag
+// Uma função segura para fazer o parse JSON para utilizar tag <script>
 function safeStringify(obj) {
   return JSON.stringify(obj).replace(/<\/script/g, '<\\/script').replace(/<!--/g, '<\\!--')
 }
